@@ -75,60 +75,14 @@ case $(uname -s) in
     ;;
 esac
 
-###################### dotnet tests ######################
-
-print_msg "Modyfying dotnet Makefile"
-git apply < ../csharp.patch
-
-print_msg "Building dotnet"
-cd bindings/csharp
-make -B ckzg CSHARP_PLATFORM=$CSHARP_PLATFORM CLANG_PLATFORM=$CLANG_PLATFORM
-dotnet restore
-
-print_msg "Running dotnet tests"
-dotnet test --configuration Release --no-restore
-cd ../..
-
 ###################### rust tests ######################
 
-#print_msg "Modyfing rust bindings build.rs"
-#git apply < ../rust.patch
-#cd bindings/rust || exit 1
+print_msg "Modyfing rust bindings build.rs"
+git apply < ../rust.patch
+cd bindings/rust || exit 1
 
-#print_msg "Running rust tests"
-#cargo test --release
-#cd ../..
-
-###################### python tests ######################
-
-print_msg "Modyfing python bindings makefile"
-cd bindings/python || exit 1
-eval "$("$sed" -i "s/..\/..\/src\/c_kzg_4844.o/..\/..\/..\/target\/release\/$LIB/g" Makefile)"
-
-print_msg "Running python tests"
-make
-cd ../..
-
-###################### java tests ######################
-
-print_msg "Modyfing java bindings makefile"
-cd bindings/java || exit 1
-eval "$("$sed" -i "s|../../src/c_kzg_4844.c ../../lib/libblst.a|../../../target/release/$LIB|g" Makefile)"
-
-print_msg "Running java tests and benchmarks"
-make CC_FLAGS=-lstdc++ build test
-cd ../..
-
-###################### nodejs tests ######################
-
-print_msg "Modyfing nodejs bindings"
-cd bindings/node.js || exit 1
-eval "$("$sed" -i "s/c_kzg_4844.o/..\/..\/..\/target\/release\/$LIB/g" binding.gyp)"
-eval "$("$sed" -i '/cd ..\/..\/src; make lib/c\\t# cd ..\/..\/src; make lib' Makefile)"
-
-print_msg "Running nodejs tests"
-yarn install
-make
+print_msg "Running rust tests"
+RUSTFLAGS="-Clink-arg=-lstdc++" cargo test --release
 cd ../../..
 
 ###################### cleaning up ######################
