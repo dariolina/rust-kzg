@@ -6,7 +6,7 @@ pub mod tests {
     use blst_from_scratch::types::fr::FsFr;
     use blst_from_scratch::types::g1::FsG1;
     use kzg::G1;
-    use kzg_bench::tests::fft_g1::{compare_ft_fft, roundtrip_fft, stride_fft};
+    use kzg_bench::tests::fft_g1::{compare_ft_fft, roundtrip_fft, stride_fft, roundtrip_fft_extended};
 
     fn make_data(n: usize) -> Vec<FsG1> {
         if n == 0 {
@@ -34,5 +34,10 @@ pub mod tests {
     #[test]
     fn compare_sft_fft_() {
         compare_ft_fft::<FsFr, FsG1, FsFFTSettings>(&fft_g1_slow, &fft_g1_fast, &make_data);
+    }
+
+    #[test]
+    fn roundtrip_fft_extended_() {
+        roundtrip_fft_extended::<FsFr, FsG1, FsFFTSettings>(&make_data);
     }
 }
