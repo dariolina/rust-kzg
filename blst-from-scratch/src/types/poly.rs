@@ -4,13 +4,15 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use kzg::{FFTFr, FFTSettings, FFTSettingsPoly, Fr, Poly, PolyRecover, ZeroPoly};
+use kzg::{FFTFr, FFTSettings, FFTSettingsPoly, Fr, Poly, PolyG1, G1, G1Mul, PolyRecover, ZeroPoly};
 
-use crate::consts::SCALE_FACTOR;
+use crate::consts::{SCALE_FACTOR, G1_IDENTITY};
 use crate::recovery::{scale_poly, unscale_poly};
 use crate::types::fft_settings::FsFFTSettings;
 use crate::types::fr::FsFr;
 use crate::utils::{log2_pow2, log2_u64};
+
+use super::g1::FsG1;
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct FsPoly {
@@ -68,8 +70,9 @@ impl Poly<FsFr> for FsPoly {
 
         let mut factor_power = FsFr::one();
         for i in 0..self.coeffs.len() {
-            factor_power = factor_power.mul(&inv_factor);
+            
             self.coeffs[i] = self.coeffs[i].mul(&factor_power);
+            factor_power = factor_power.mul(&inv_factor);
         }
     }
 
@@ -78,8 +81,9 @@ impl Poly<FsFr> for FsPoly {
 
         let mut factor_power = FsFr::one();
         for i in 0..self.coeffs.len() {
-            factor_power = factor_power.mul(&scale_factor);
+            
             self.coeffs[i] = self.coeffs[i].mul(&factor_power);
+            factor_power = factor_power.mul(&scale_factor);
         }
     }
 
@@ -258,6 +262,78 @@ impl Poly<FsFr> for FsPoly {
         }
 
         Ok(ret)
+    }
+}
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub struct FsPolyG1 {
+    pub coeffs: Vec<FsG1>,
+}
+
+impl PolyG1<FsG1, FsFr> for FsPolyG1 {
+    fn new(size: usize) -> Result<Self, String> {
+        Ok(Self {
+            coeffs: vec![G1_IDENTITY; size],
+        })
+    }
+
+    fn get_coeff_at(&self, i: usize) -> FsG1 {
+        self.coeffs[i]
+    }
+
+    fn set_coeff_at(&mut self, i: usize, x: &FsG1) {
+        self.coeffs[i] = *x
+    }
+
+    fn get_coeffs(&self) -> &[FsG1] {
+        &self.coeffs
+    }
+
+    fn len(&self) -> usize {
+        self.coeffs.len()
+    }
+
+    fn eval(&self, x: &FsFr) -> FsG1 {
+        if self.coeffs.is_empty() {
+            return G1_IDENTITY;
+        } else if x.is_zero() {
+            return self.coeffs[0];
+        }
+
+        let mut ret = self.coeffs[self.coeffs.len() - 1];
+        let mut i = self.coeffs.len() - 2;
+        loop {
+            let temp = ret.mul(x);
+            ret = temp.add(&self.coeffs[i]);
+
+            if i == 0 {
+                break;
+            }
+            i -= 1;
+        }
+
+        ret
+    }
+
+    fn scale(&mut self) {
+        let scale_factor = FsFr::from_u64(SCALE_FACTOR);
+        let inv_factor = scale_factor.inverse();
+
+        let mut factor_power = FsFr::one();
+        for i in 0..self.coeffs.len() {
+            self.coeffs[i] = self.coeffs[i].mul(&factor_power);
+            factor_power = factor_power.mul(&inv_factor);
+        }
+    }
+
+    fn unscale(&mut self) {
+        let scale_factor = FsFr::from_u64(SCALE_FACTOR);
+
+        let mut factor_power = FsFr::one();
+        for i in 0..self.coeffs.len() {
+            
+            self.coeffs[i] = self.coeffs[i].mul(&factor_power);
+            factor_power = factor_power.mul(&scale_factor);
+        }
     }
 }
 

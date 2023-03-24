@@ -258,3 +258,30 @@ pub trait FK20MultiSettings<
 
     fn data_availability_optimized(&self, p: &Polynomial) -> Result<Vec<Coeff2>, String>;
 }
+pub trait PolyG1<Coeff: G1, Scalar: Fr>: Default + Clone {
+    fn new(size: usize) -> Result<Self, String>;
+
+    fn get_coeff_at(&self, i: usize) -> Coeff;
+
+    fn set_coeff_at(&mut self, i: usize, x: &Coeff);
+
+    fn get_coeffs(&self) -> &[Coeff];
+
+    fn len(&self) -> usize;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn eval(&self, x: &Scalar) -> Coeff;
+
+    fn scale(&mut self);
+
+    fn unscale(&mut self);
+}    
+pub trait PolyRecoverG1<Coeff: G1, Scalar:Fr, Polynomial: PolyG1<Coeff, Scalar>, FSettings: FFTSettings<Scalar>> {
+    fn recover_poly_from_samples_g1(
+        samples: &[Option<Coeff>],
+        fs: &FSettings,
+    ) -> Result<Polynomial, String>;
+}
