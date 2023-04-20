@@ -61,10 +61,6 @@ impl PolyRecoverG1<FsG1, FsFr, FsPolyG1, FsFFTSettings> for FsPolyG1 {
     };
 
     // x -> k * x
-    let len_zero_poly = zero_poly.coeffs.len();
-
-    let _zero_poly_scale = (len_zero_poly - 1).next_power_of_two();
-
     poly_with_zero.scale();
     zero_poly.scale();
 
