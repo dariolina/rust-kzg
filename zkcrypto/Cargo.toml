@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 kzg = { path = "../kzg"}
 kzg-bench = { path = "../kzg-bench" }
-blst = {'git' = 'https://github.com/supranational/blst.git'}
+blst = {git = 'https://github.com/subspace/blst.git', rev = "079887d2d05bb2d61df4ceef3d4c836228ebc6ff"}
 pairing = "0.22.0"
 bls12_381 = "0.7.0"
 num-bigint = "0.4"
