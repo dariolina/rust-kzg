@@ -44,7 +44,7 @@ use crate::utils::reverse_bit_order;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-fn bytes_to_g1_rust(bytes: &[u8; BYTES_PER_G1]) -> Result<FsG1, String> {
+pub fn bytes_to_g1_rust(bytes: &[u8; BYTES_PER_G1]) -> Result<FsG1, String> {
     let mut tmp = blst_p1_affine::default();
     let mut g1 = blst_p1::default();
     unsafe {
@@ -61,7 +61,7 @@ fn bytes_to_g1_rust(bytes: &[u8; BYTES_PER_G1]) -> Result<FsG1, String> {
     Ok(FsG1(g1))
 }
 
-fn bytes_from_g1_rust(g1: &FsG1) -> [u8; BYTES_PER_G1] {
+pub fn bytes_from_g1_rust(g1: &FsG1) -> [u8; BYTES_PER_G1] {
     let mut out = [0u8; BYTES_PER_G1];
     unsafe {
         blst_p1_compress(out.as_mut_ptr(), &g1.0);
@@ -69,7 +69,7 @@ fn bytes_from_g1_rust(g1: &FsG1) -> [u8; BYTES_PER_G1] {
     out
 }
 
-fn bytes_to_g2_rust(bytes: &[u8; BYTES_PER_G2]) -> Result<FsG2, String> {
+pub fn bytes_to_g2_rust(bytes: &[u8; BYTES_PER_G2]) -> Result<FsG2, String> {
     let mut tmp = blst_p2_affine::default();
     let mut g2 = blst_p2::default();
     unsafe {
