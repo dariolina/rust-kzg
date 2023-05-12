@@ -9,7 +9,12 @@ pub fn bench_fft_fr<TFr: Fr, TFFTSettings: FFTSettings<TFr> + FFTFr<TFr>>(c: &mu
     let id = format!("bench_fft_fr scale: '{}'", BENCH_SCALE);
     c.bench_function(&id, |b| b.iter(|| fft_settings.fft_fr(&data, false)));
 }
-
+pub fn bench_fft_fr_in_place<TFr: Fr, TFFTSettings: FFTSettings<TFr> + FFTFr<TFr>>(c: &mut Criterion) {
+    let fft_settings = TFFTSettings::new(BENCH_SCALE).unwrap();
+    let mut data: Vec<TFr> = vec![TFr::rand(); fft_settings.get_max_width()];
+    let id = format!("bench_fft_fr in place scale: '{}'", BENCH_SCALE);
+    c.bench_function(&id, |b| b.iter(|| fft_settings.fft_fr_in_place(&mut data, false)));
+}
 pub fn bench_fft_g1<TFr: Fr, TG1: G1, TFFTSettings: FFTSettings<TFr> + FFTG1<TG1>>(
     c: &mut Criterion,
 ) {
