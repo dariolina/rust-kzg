@@ -67,6 +67,45 @@ pub fn fft_fr_fast(
     }
 }
 
+pub fn fft_fr_fast_in_place(
+    data: &mut [FsFr],
+    stride: usize,
+    roots: &[FsFr],
+    roots_stride: usize,
+) {
+    let half: usize = data.len() / 2;
+    if half > 0 {
+        // Recurse
+        for chunk in data.chunks_mut(half) {
+            
+            #[cfg(not(feature = "parallel"))]
+            {
+                fft_fr_fast_in_place(chunk, stride * 2, roots, roots_stride * 2);
+            }
+
+            #[cfg(feature = "parallel")]
+            {
+                if half > 256 {
+                    let (lo, hi) = data.split_at_mut(half);
+                    rayon::join(
+                        || fft_fr_fast_in_place(lo, stride * 2, roots, roots_stride * 2),
+                        || fft_fr_fast_in_place(hi, stride * 2, roots, roots_stride * 2),
+                    );
+                } else {
+                    fft_fr_fast_in_place(chunk, stride * 2, roots, roots_stride * 2);
+                }
+            }
+        }
+
+        let (data_lo, data_hi) = data.split_at_mut(half);
+        for (i, (lo, hi)) in data_lo.iter_mut().zip(data_hi.iter_mut()).enumerate() {
+            let y_times_root = hi.mul(&roots[i * roots_stride]);
+            *hi = lo.sub(&y_times_root);
+            *lo = lo.add(&y_times_root);
+        }
+    }
+}
+
 
 impl FsFFTSettings {
     /// Fast Fourier Transform for finite field elements, `output` must be zeroes
@@ -122,6 +161,38 @@ impl FFTFr<FsFr> for FsFFTSettings {
         self.fft_fr_output(data, inverse, &mut ret)?;
 
         Ok(ret)
+    }
+
+    fn fft_fr_in_place(&self, data: &mut[FsFr], inverse: bool) -> Result<(), String> {
+        if data.len() > self.max_width {
+            return Err(String::from(
+                "Supplied list is longer than the available max width",
+            ));
+        }
+        
+        if !data.len().is_power_of_two() {
+            return Err(String::from("A list with power-of-two length expected"));
+        }
+
+        // In case more roots are provided with fft_settings, use a larger stride
+        let stride = self.max_width / data.len();
+
+        // Inverse is same as regular, but all constants are reversed and results are divided by n
+        // This is a property of the DFT matrix
+        let roots = if inverse {
+            &self.reverse_roots_of_unity
+        } else {
+            &self.expanded_roots_of_unity
+        };
+
+        fft_fr_fast_in_place(data, 1, roots, stride);
+
+        if inverse {
+            let inv_fr_len = FsFr::from_u64(data.len() as u64).inverse();
+            data.iter_mut().for_each(|f| *f = f.mul(&inv_fr_len));
+        }
+
+        Ok(())
     }
 }
 
