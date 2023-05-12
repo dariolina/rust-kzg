@@ -11,6 +11,7 @@ use crate::types::fft_settings::FsFFTSettings;
 use crate::types::fr::FsFr;
 
 /// Fast Fourier Transform for finite field elements. Polynomial ret is operated on in reverse order: ret_i * x ^ (len - i - 1)
+
 pub fn fft_fr_fast(
     ret: &mut [FsFr],
     data: &[FsFr],
@@ -21,50 +22,51 @@ pub fn fft_fr_fast(
     let half: usize = ret.len() / 2;
     if half > 0 {
         // Recurse
-        // Offsetting data by stride = 1 on the first iteration forces the even members to the first half
-        // and the odd members to the second half
-        #[cfg(not(feature = "parallel"))]
-        {
-            fft_fr_fast(&mut ret[..half], data, stride * 2, roots, roots_stride * 2);
-            fft_fr_fast(
-                &mut ret[half..],
-                &data[stride..],
-                stride * 2,
-                roots,
-                roots_stride * 2,
-            );
-        }
-
-        #[cfg(feature = "parallel")]
-        {
-            if half > 256 {
-                let (lo, hi) = ret.split_at_mut(half);
-                rayon::join(
-                    || fft_fr_fast(lo, data, stride * 2, roots, roots_stride * 2),
-                    || fft_fr_fast(hi, &data[stride..], stride * 2, roots, roots_stride * 2),
-                );
-            } else {
-                fft_fr_fast(&mut ret[..half], data, stride * 2, roots, roots_stride * 2);
+        for (idx, chunk) in ret.chunks_mut(half).enumerate() {
+            let data_offset = if idx == 0 { 0 } else { stride };
+            #[cfg(not(feature = "parallel"))]
+            {
                 fft_fr_fast(
-                    &mut ret[half..],
-                    &data[stride..],
+                    chunk,
+                    &data[data_offset..],
                     stride * 2,
                     roots,
                     roots_stride * 2,
                 );
             }
+
+            #[cfg(feature = "parallel")]
+            {
+                if half > 256 {
+                    let (lo, hi) = ret.split_at_mut(half);
+                    rayon::join(
+                        || fft_fr_fast(lo, data, stride * 2, roots, roots_stride * 2),
+                        || fft_fr_fast(hi, &data[stride..], stride * 2, roots, roots_stride * 2),
+                    );
+                } else {
+                    fft_fr_fast(
+                        chunk,
+                        &data[data_offset..],
+                        stride * 2,
+                        roots,
+                        roots_stride * 2,
+                    );
+                }
+            }
         }
 
-        for i in 0..half {
-            let y_times_root = ret[i + half].mul(&roots[i * roots_stride]);
-            ret[i + half] = ret[i].sub(&y_times_root);
-            ret[i] = ret[i].add(&y_times_root);
+        let (ret_lo, ret_hi) = ret.split_at_mut(half);
+        for (i, (lo, hi)) in ret_lo.iter_mut().zip(ret_hi.iter_mut()).enumerate() {
+            let y_times_root = hi.mul(&roots[i * roots_stride]);
+            *hi = lo.sub(&y_times_root);
+            *lo = lo.add(&y_times_root);
         }
     } else {
         // When len = 1, return the permuted element
         ret[0] = data[0];
     }
 }
+
 
 impl FsFFTSettings {
     /// Fast Fourier Transform for finite field elements, `output` must be zeroes
